@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIX3D · Puntos</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F3D2E">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TRIX3D">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --esmeralda:#0F3D2E;
+    --esmeralda-light:#1D5A44;
+    --dorado:#C9A227;
+    --parchment:#EDE6D6;
+    --dark:#1C1A17;
+    --white:#FBF9F4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--parchment); color:var(--dark); font-family:'Work Sans',sans-serif; min-height:100vh;}
+  .wrap{max-width:460px; margin:0 auto; padding:28px 20px 60px;}
+  header{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;}
+  .brand{font-family:'Fraunces',serif; font-weight:700; font-size:26px; color:var(--esmeralda); letter-spacing:-0.01em;}
+  .brand span{color:var(--dorado);}
+  .switch{display:flex; background:var(--white); border-radius:999px; padding:3px; border:1px solid rgba(28,26,23,0.1);}
+  .switch button{border:none; background:transparent; padding:7px 14px; border-radius:999px; font-family:'Work Sans',sans-serif; font-size:12.5px; font-weight:600; color:var(--dark); opacity:0.55; cursor:pointer;}
+  .switch button.active{background:var(--esmeralda); color:var(--white); opacity:1;}
+  .card{background:var(--white); border-radius:18px; padding:22px; margin-bottom:16px; border:1px solid rgba(28,26,23,0.08);}
+  h2{font-family:'Fraunces',serif; font-size:19px; margin:0 0 14px; color:var(--esmeralda);}
+  label{display:block; font-size:12.5px; font-weight:600; margin:12px 0 5px; color:rgba(28,26,23,0.65);}
+  input{width:100%; padding:11px 13px; border-radius:10px; border:1px solid rgba(28,26,23,0.18); font-family:'Work Sans',sans-serif; font-size:14.5px; background:var(--parchment); color:var(--dark);}
+  input:focus{outline:2px solid var(--esmeralda); outline-offset:1px;}
+  button.action{margin-top:16px; width:100%; padding:12px; border-radius:10px; border:none; background:var(--esmeralda); color:var(--white); font-family:'Work Sans',sans-serif; font-weight:600; font-size:14.5px; cursor:pointer;}
+  button.action:disabled{opacity:0.5;}
+  button.action.gold{background:var(--dorado); color:var(--dark);}
+  button.link{background:none; border:none; color:var(--esmeralda); font-size:13px; text-decoration:underline; cursor:pointer; padding:0; margin-top:12px;}
+  .msg{font-size:13px; margin-top:10px; padding:9px 11px; border-radius:8px;}
+  .msg.err{background:rgba(200,60,40,0.1); color:#8a2f1f;}
+  .msg.ok{background:rgba(15,61,46,0.1); color:var(--esmeralda);}
+  .ring-wrap{display:flex; flex-direction:column; align-items:center; padding:8px 0 4px;}
+  .ring-num{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:34px; fill:var(--esmeralda);}
+  .ring-label{font-family:'Work Sans',sans-serif; font-size:12px; fill:rgba(28,26,23,0.6);}
+  .hello{font-size:13px; color:rgba(28,26,23,0.6); margin-bottom:2px;}
+  .tier-row{display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-top:1px solid rgba(28,26,23,0.08);}
+  .tier-row:first-child{border-top:none;}
+  .tier-name{font-size:14px; font-weight:500;}
+  .tier-pts{font-family:'JetBrains Mono',monospace; font-size:12px; color:rgba(28,26,23,0.55);}
+  .badge{font-family:'JetBrains Mono',monospace; font-size:11px; padding:3px 9px; border-radius:999px;}
+  .badge.unlocked{background:rgba(201,162,39,0.2); color:#8a6c10;}
+  .badge.locked{background:rgba(28,26,23,0.06); color:rgba(28,26,23,0.4);}
+  .code-display{font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; letter-spacing:0.08em; text-align:center; padding:16px; background:var(--esmeralda); color:var(--white); border-radius:12px; margin-top:14px;}
+  .hint{font-size:12px; color:rgba(28,26,23,0.5); margin-top:8px; line-height:1.5;}
+  .logout{font-size:12px; color:rgba(28,26,23,0.5); background:none; border:none; cursor:pointer; text-decoration:underline;}
+  .row{display:flex; justify-content:space-between; align-items:center;}
+  .client-list{max-height:220px; overflow-y:auto;}
+  .client-item{display:flex; justify-content:space-between; padding:9px 0; border-top:1px solid rgba(28,26,23,0.08); font-size:13px;}
+  .client-item:first-child{border-top:none;}
+  .warn{font-size:11.5px; color:rgba(28,26,23,0.5); line-height:1.5; margin-top:18px; padding-top:14px; border-top:1px dashed rgba(28,26,23,0.15);}
+  .loading{text-align:center; padding:40px 0; color:rgba(28,26,23,0.5); font-size:13px;}
+  .config-error{background:#fff3f0; border:1px solid #e0a898; color:#8a2f1f; padding:14px; border-radius:10px; font-size:12.5px; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">Cargando…</div></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+// ======================================================================
+// 1) PEGÁ ACÁ TU CONFIG DE FIREBASE (Firebase Console > Configuración del
+//    proyecto > tus apps > SDK setup and configuration > Config)
+// ======================================================================
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB2Z2YVFDRGC9zuswO6-KOuWHOUtYk3WYY",
+    authDomain: "trix3d-filamento.firebaseapp.com",
+    projectId: "trix3d-filamento",
+    storageBucket: "trix3d-filamento.firebasestorage.app",
+    messagingSenderId: "564863601077",
+    appId: "1:564863601077:web:025a16d407cc808edcf1fc"
+  };
+
+const EMAIL_DOMAIN = "trix3d.local"; // los usuarios eligen un "usuario", se guarda como usuario@trix3d.local
+
+const app = document.getElementById('app');
+let fbApp, auth, db;
+let view = 'client';
+let currentUser = null; // firebase auth user, client side
+let configCache = null;
+
+function isConfigured(){
+  return firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("TU_");
+}
+
+async function boot(){
+  if(!isConfigured()){
+    app.innerHTML = `
+      <div class="wrap" style="padding:0">
+        <header><div class="brand">TRIX<span>3D</span></div></header>
+        <div class="card">
+          <h2>Falta configurar Firebase</h2>
+          <div class="config-error">
+            Este archivo todavía tiene los valores de ejemplo en <code>firebaseConfig</code>.
+            Pegá ahí las credenciales reales de tu proyecto de Firebase y volvé a abrir la página.
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+  try{
+    fbApp = initializeApp(firebaseConfig);
+    auth = getAuth(fbApp);
+    db = getFirestore(fbApp);
+    await ensureConfigDoc();
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      draw();
+    });
+  }catch(e){
+    showBootError(e);
+  }
+}
+
+function showBootError(e){
+  console.error('Error al iniciar la app:', e);
+  const isPermission = (e && e.code === 'permission-denied') || /permission/i.test(e && e.message || '');
+  app.innerHTML = `
+    <div class="wrap" style="padding:0">
+      <header><div class="brand">TRIX<span>3D</span></div></header>
+      <div class="card">
+        <h2>No se pudo conectar</h2>
+        <div class="config-error">
+          ${isPermission
+            ? 'Firestore está rechazando la conexión (permission-denied). Andá a Firebase Console → Firestore Database → Reglas, y pegá las reglas de seguridad que habilitan lectura/escritura para usuarios logueados.'
+            : 'Hubo un error al conectar con Firebase: <code>' + (e && e.message ? e.message.replace(/</g,'&lt;') : 'error desconocido') + '</code>. Revisá que el firebaseConfig sea correcto y que Firestore/Authentication estén habilitados en la consola.'}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function ensureConfigDoc(){
+  const ref = doc(db, "config", "settings");
+  const snap = await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref, {
+      pointsPer100: 1,
+      tiers: [
+        {label:'5% off', points:50},
+        {label:'10% off', points:100},
+        {label:'20% off', points:250}
+      ],
+      adminPass: "trix3d2026"
+    });
+  }
+}
+
+async function getConfig(){
+  if(configCache) return configCache;
+  const snap = await getDoc(doc(db, "config", "settings"));
+  configCache = snap.data();
+  return configCache;
+}
+async function saveConfig(cfg){
+  await setDoc(doc(db, "config", "settings"), cfg);
+  configCache = cfg;
+}
+
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+function render(html){ app.innerHTML = `<div class="wrap" style="padding:0">${html}</div>`; }
+
+function header(){
+  return `
+    <header>
+      <div class="brand">TRIX<span>3D</span></div>
+      <div class="switch">
+        <button onclick="window.setView('client')" class="${view==='client'?'active':''}">Cliente</button>
+        <button onclick="window.setView('admin')" class="${view==='admin'?'active':''}">Panel</button>
+      </div>
+    </header>`;
+}
+
+window.setView = async function(v){
+  view = v;
+  if(view === 'admin'){ window._adminSession = false; }
+  if(currentUser && view === 'client'){ await signOut(auth); }
+  draw();
+}
+
+async function draw(){
+  if(view === 'client') return drawClient();
+  return drawAdmin();
+}
+
+// ---------------- CLIENT ----------------
+async function drawClient(){
+  if(currentUser && !currentUser.email.startsWith('admin_')){
+    return drawClientDashboard();
+  }
+  render(header() + `
+    <div class="card">
+      <h2>Ingresá o creá tu cuenta</h2>
+      <label>Usuario</label>
+      <input id="cu" placeholder="tu nombre o alias" autocapitalize="none">
+      <label>Contraseña</label>
+      <input id="cp" type="password" placeholder="mínimo 6 caracteres">
+      <button class="action" id="loginBtn" onclick="window.clientLogin()">Ingresar</button>
+      <button class="link" onclick="window.clientRegister()">Crear cuenta nueva</button>
+      <div id="cmsg"></div>
+    </div>
+  `);
+}
+
+function usernameToEmail(u){ return u.trim().toLowerCase().replace(/\s+/g,'_') + '@' + EMAIL_DOMAIN; }
+
+window.clientLogin = async function(){
+  const username = document.getElementById('cu').value.trim();
+  const pass = document.getElementById('cp').value;
+  const msg = document.getElementById('cmsg');
+  if(!username || !pass){ msg.innerHTML = '<div class="msg err">Completá usuario y contraseña.</div>'; return; }
+  try{
+    await signInWithEmailAndPassword(auth, usernameToEmail(username), pass);
+  }catch(e){
+    msg.innerHTML = '<div class="msg err">Usuario o contraseña incorrectos.</div>';
+  }
+}
+
+window.clientRegister = async function(){
+  const username = document.getElementById('cu').value.trim();
+  const pass = document.getElementById('cp').value;
+  const msg = document.getElementById('cmsg');
+  if(!username || !pass){ msg.innerHTML = '<div class="msg err">Completá usuario y contraseña.</div>'; return; }
+  if(pass.length < 6){ msg.innerHTML = '<div class="msg err">La contraseña necesita al menos 6 caracteres.</div>'; return; }
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, usernameToEmail(username), pass);
+    await setDoc(doc(db, "users", cred.user.uid), {
+      username, points: 0, redeemedCodes: []
+    });
+  }catch(e){
+    if(e.code === 'auth/email-already-in-use'){
+      msg.innerHTML = '<div class="msg err">Ese usuario ya existe. Iniciá sesión.</div>';
+    } else {
+      msg.innerHTML = '<div class="msg err">No se pudo crear la cuenta. Probá de nuevo.</div>';
+    }
+  }
+}
+
+async function drawClientDashboard(){
+  const uref = doc(db, "users", currentUser.uid);
+  const usnap = await getDoc(uref);
+  const u = usnap.data();
+  const cfg = await getConfig();
+  const sortedTiers = cfg.tiers.slice().sort((a,b)=>a.points-b.points);
+  const nextTier = sortedTiers.find(t => t.points > u.points);
+  const pct = nextTier ? Math.min(100, Math.round((u.points / nextTier.points) * 100)) : 100;
+  const r = 54, c = 2*Math.PI*r;
+  const offset = c - (pct/100)*c;
+
+  render(header() + `
+    <div class="card">
+      <div class="row">
+        <div class="hello">Hola, ${u.username}</div>
+        <button class="logout" onclick="window.clientLogout()">Salir</button>
+      </div>
+      <div class="ring-wrap">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="${r}" fill="none" stroke="rgba(28,26,23,0.08)" stroke-width="12"/>
+          <circle cx="75" cy="75" r="${r}" fill="none" stroke="#C9A227" stroke-width="12"
+            stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+            transform="rotate(-90 75 75)"/>
+          <text x="75" y="80" text-anchor="middle" class="ring-num">${u.points}</text>
+          <text x="75" y="98" text-anchor="middle" class="ring-label">puntos</text>
+        </svg>
+        ${nextTier ? `<div class="hint" style="text-align:center">Te faltan <strong>${nextTier.points - u.points}</strong> puntos para ${nextTier.label}</div>` : `<div class="hint" style="text-align:center">¡Tenés todos los beneficios desbloqueados!</div>`}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Canjear código</h2>
+      <label>Código que te dio TRIX3D</label>
+      <input id="redeemCode" placeholder="Ej: A3F9K2" style="text-transform:uppercase">
+      <button class="action gold" onclick="window.redeemCode()">Sumar puntos</button>
+      <div id="rmsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Beneficios</h2>
+      ${sortedTiers.map(t => `
+        <div class="tier-row">
+          <div>
+            <div class="tier-name">${t.label}</div>
+            <div class="tier-pts">${t.points} pts</div>
+          </div>
+          <span class="badge ${u.points >= t.points ? 'unlocked':'locked'}">${u.points >= t.points ? 'Desbloqueado' : 'Bloqueado'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `);
+}
+
+window.clientLogout = async function(){ await signOut(auth); }
+
+window.redeemCode = async function(){
+  const codeInput = document.getElementById('redeemCode').value.trim().toUpperCase();
+  const msg = document.getElementById('rmsg');
+  if(!codeInput){ msg.innerHTML = '<div class="msg err">Ingresá un código.</div>'; return; }
+  const codeRef = doc(db, "codes", codeInput);
+  const codeSnap = await getDoc(codeRef);
+  if(!codeSnap.exists()){ msg.innerHTML = '<div class="msg err">Ese código no existe.</div>'; return; }
+  const codeData = codeSnap.data();
+  if(codeData.used){ msg.innerHTML = '<div class="msg err">Ese código ya fue usado.</div>'; return; }
+  const uref = doc(db, "users", currentUser.uid);
+  const usnap = await getDoc(uref);
+  const u = usnap.data();
+  await updateDoc(uref, {
+    points: u.points + codeData.points,
+    redeemedCodes: arrayUnion(codeInput)
+  });
+  await updateDoc(codeRef, { used: true, redeemedBy: u.username });
+  msg.innerHTML = `<div class="msg ok">¡Sumaste ${codeData.points} puntos!</div>`;
+  setTimeout(drawClientDashboard, 900);
+}
+
+// ---------------- ADMIN ----------------
+// El panel de admin usa una contraseña simple guardada en Firestore (config/settings),
+// separada del login de clientes. Pensado para uso interno tuyo, no para clientes.
+async function drawAdmin(){
+  if(window._adminSession){
+    return drawAdminPanel();
+  }
+  render(header() + `
+    <div class="card">
+      <h2>Panel de TRIX3D</h2>
+      <label>Contraseña de admin</label>
+      <input id="ap" type="password" placeholder="••••••">
+      <button class="action" onclick="window.adminLogin()">Entrar</button>
+      <div id="amsg"></div>
+    </div>
+  `);
+}
+
+window.adminLogin = async function(){
+  const cfg = await getConfig();
+  const pass = document.getElementById('ap').value;
+  if(pass !== cfg.adminPass){
+    document.getElementById('amsg').innerHTML = '<div class="msg err">Contraseña incorrecta.</div>';
+    return;
+  }
+  window._adminSession = true;
+  draw();
+}
+
+async function drawAdminPanel(){
+  const cfg = await getConfig();
+  render(header() + `
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Generar código</h2>
+        <button class="logout" onclick="window.adminLogout()">Salir</button>
+      </div>
+      <label>Monto de la compra ($)</label>
+      <input id="amount" type="number" placeholder="Ej: 8000">
+      <button class="action gold" onclick="window.generateCode()">Generar código</button>
+      <div id="genResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>Configuración</h2>
+      <label>Puntos por cada $100 gastados</label>
+      <input id="rate" type="number" step="0.1" value="${cfg.pointsPer100}">
+      <button class="action" onclick="window.saveRate()">Guardar tasa</button>
+      <div id="cfgmsg"></div>
+      <div class="warn">Niveles de descuento:</div>
+      ${cfg.tiers.map((t,i)=>`
+        <div class="tier-row">
+          <div>
+            <div class="tier-name">${t.label}</div>
+            <div class="tier-pts">${t.points} pts</div>
+          </div>
+          <button class="logout" onclick="window.removeTier(${i})">quitar</button>
+        </div>
+      `).join('')}
+      <label>Nuevo nivel (ej: "15% off")</label>
+      <input id="tierLabel" placeholder="Nombre del beneficio">
+      <label>Puntos necesarios</label>
+      <input id="tierPoints" type="number">
+      <button class="action" onclick="window.addTier()">Agregar nivel</button>
+    </div>
+
+    <div class="card">
+      <h2>Clientes</h2>
+      <div id="clientList" class="client-list">Cargando...</div>
+    </div>
+  `);
+  loadClientList();
+}
+
+window.adminLogout = function(){ window._adminSession = false; draw(); }
+
+window.generateCode = async function(){
+  const amount = parseFloat(document.getElementById('amount').value);
+  const result = document.getElementById('genResult');
+  if(!amount || amount <= 0){ result.innerHTML = '<div class="msg err">Ingresá un monto válido.</div>'; return; }
+  const cfg = await getConfig();
+  const points = Math.round((amount / 100) * cfg.pointsPer100);
+  let code = genCode();
+  while((await getDoc(doc(db,"codes",code))).exists()) code = genCode();
+  await setDoc(doc(db, "codes", code), {
+    points, used:false, createdAt: new Date().toISOString(), amount
+  });
+  result.innerHTML = `<div class="code-display">${code}</div><div class="hint" style="text-align:center">Vale ${points} puntos. Compartíselo al cliente.</div>`;
+}
+
+window.saveRate = async function(){
+  const cfg = await getConfig();
+  cfg.pointsPer100 = parseFloat(document.getElementById('rate').value) || cfg.pointsPer100;
+  await saveConfig(cfg);
+  document.getElementById('cfgmsg').innerHTML = '<div class="msg ok">Tasa actualizada.</div>';
+}
+
+window.addTier = async function(){
+  const label = document.getElementById('tierLabel').value.trim();
+  const points = parseInt(document.getElementById('tierPoints').value);
+  if(!label || !points){ return; }
+  const cfg = await getConfig();
+  cfg.tiers.push({label, points});
+  await saveConfig(cfg);
+  drawAdminPanel();
+}
+
+window.removeTier = async function(i){
+  const cfg = await getConfig();
+  cfg.tiers.splice(i,1);
+  await saveConfig(cfg);
+  drawAdminPanel();
+}
+
+async function loadClientList(){
+  const listEl = document.getElementById('clientList');
+  if(!listEl) return;
+  try{
+    const snap = await getDocs(collection(db, "users"));
+    const users = [];
+    snap.forEach(d => users.push(d.data()));
+    if(users.length === 0){ listEl.innerHTML = '<div class="hint">Todavía no hay clientes registrados.</div>'; return; }
+    users.sort((a,b)=>b.points-a.points);
+    listEl.innerHTML = users.map(u => `
+      <div class="client-item"><span>${u.username}</span><span>${u.points} pts</span></div>
+    `).join('');
+  }catch(e){
+    listEl.innerHTML = '<div class="hint">No se pudo cargar la lista.</div>';
+  }
+}
+
+boot();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.log('SW registration failed', e));
+  });
+}
+</script>
+</body>
+</html>
