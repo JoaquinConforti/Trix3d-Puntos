@@ -297,8 +297,8 @@ async function drawClientDashboard(){
     </div>
 
     <div class="card">
-      <h2>Canjear código</h2>
-      <label>Código que te dio TRIX3D</label>
+      <h2>Cargar puntos</h2>
+      <label>Código que te dio TRIX3D por tu compra</label>
       <input id="redeemCode" placeholder="Ej: A3F9K2" style="text-transform:uppercase">
       <button class="action gold" onclick="window.redeemCode()">Sumar puntos</button>
       <div id="rmsg"></div>
@@ -312,14 +312,46 @@ async function drawClientDashboard(){
             <div class="tier-name">${t.label}</div>
             <div class="tier-pts">${t.points} pts</div>
           </div>
-          <span class="badge ${u.points >= t.points ? 'unlocked':'locked'}">${u.points >= t.points ? 'Desbloqueado' : 'Bloqueado'}</span>
+          ${u.points >= t.points
+            ? `<button class="action gold" style="margin:0; width:auto; padding:8px 14px; font-size:12.5px;" onclick="window.claimTier(${t.points}, '${t.label.replace(/'/g,"\\'")}')">Canjear</button>`
+            : `<span class="badge locked">Bloqueado</span>`}
         </div>
       `).join('')}
+      <div id="claimResult"></div>
     </div>
   `);
 }
 
 window.clientLogout = async function(){ await signOut(auth); }
+
+window.claimTier = async function(pointsCost, label){
+  const resultEl = document.getElementById('claimResult');
+  if(!confirm(`¿Canjear "${label}" por ${pointsCost} puntos? No se puede deshacer.`)) return;
+  try{
+    const uref = doc(db, "users", currentUser.uid);
+    const usnap = await getDoc(uref);
+    const u = usnap.data();
+    if(u.points < pointsCost){
+      resultEl.innerHTML = '<div class="msg err">Ya no te alcanzan los puntos (puede que hayan cambiado).</div>';
+      return;
+    }
+    let code = genCode();
+    while((await getDoc(doc(db,"redemptions",code))).exists()) code = genCode();
+    await setDoc(doc(db, "redemptions", code), {
+      code, uid: currentUser.uid, username: u.username,
+      tierLabel: label, points: pointsCost,
+      status: 'pending', createdAt: new Date().toISOString()
+    });
+    await updateDoc(uref, { points: u.points - pointsCost });
+    resultEl.innerHTML = `
+      <div class="code-display">${code}</div>
+      <div class="hint" style="text-align:center">Mostrale este código a TRIX3D para validar tu ${label}. Válido una sola vez.</div>`;
+    fireNotification('TRIX3D · Canje listo', `Mostrá el código ${code} para tu ${label}.`);
+    setTimeout(drawClientDashboard, 2500);
+  }catch(e){
+    resultEl.innerHTML = `<div class="msg err">No se pudo canjear: ${e.message || e}</div>`;
+  }
+}
 
 // ---- Notificaciones locales (sin servidor) ----
 // Se disparan mientras la pestaña/app está abierta (aunque en segundo plano).
@@ -417,6 +449,40 @@ window.adminLogin = async function(){
   }
 }
 
+window.checkClaim = async function(){
+  const code = document.getElementById('claimCode').value.trim().toUpperCase();
+  const resultEl = document.getElementById('claimCheckResult');
+  if(!code){ resultEl.innerHTML = '<div class="msg err">Ingresá un código.</div>'; return; }
+  try{
+    const ref = doc(db, "redemptions", code);
+    const snap = await getDoc(ref);
+    if(!snap.exists()){ resultEl.innerHTML = '<div class="msg err">Ese código no existe.</div>'; return; }
+    const r = snap.data();
+    if(r.status === 'used'){
+      resultEl.innerHTML = `<div class="msg err">Ya fue usado (por ${r.username}, el ${new Date(r.usedAt).toLocaleString('es-AR')}).</div>`;
+      return;
+    }
+    resultEl.innerHTML = `
+      <div class="msg ok">
+        <strong>${r.username}</strong> · ${r.tierLabel} (${r.points} pts)
+      </div>
+      <button class="action gold" onclick="window.markClaimUsed('${code}')">Confirmar y marcar como usado</button>
+    `;
+  }catch(e){
+    resultEl.innerHTML = `<div class="msg err">Error al buscar: ${e.message || e}</div>`;
+  }
+}
+
+window.markClaimUsed = async function(code){
+  const resultEl = document.getElementById('claimCheckResult');
+  try{
+    await updateDoc(doc(db, "redemptions", code), { status: 'used', usedAt: new Date().toISOString() });
+    resultEl.innerHTML = '<div class="msg ok">Listo, beneficio aplicado y marcado como usado.</div>';
+  }catch(e){
+    resultEl.innerHTML = `<div class="msg err">No se pudo marcar: ${e.message || e}</div>`;
+  }
+}
+
 async function drawAdminPanel(){
   const cfg = await getConfig();
   render(header() + `
@@ -429,6 +495,14 @@ async function drawAdminPanel(){
       <input id="amount" type="number" placeholder="Ej: 8000">
       <button class="action gold" onclick="window.generateCode()">Generar código</button>
       <div id="genResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>Validar canje de beneficio</h2>
+      <label>Código que te muestra el cliente</label>
+      <input id="claimCode" placeholder="Ej: B7K2M9" style="text-transform:uppercase">
+      <button class="action gold" onclick="window.checkClaim()">Buscar código</button>
+      <div id="claimCheckResult"></div>
     </div>
 
     <div class="card">
