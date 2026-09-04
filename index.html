@@ -94,6 +94,7 @@ const firebaseConfig = {
 };
 
 const EMAIL_DOMAIN = "trix3d.local"; // los usuarios eligen un "usuario", se guarda como usuario@trix3d.local
+const ADMIN_EMAIL = "admin@" + EMAIL_DOMAIN; // creá este usuario vos mismo en Firebase Console > Authentication > Users
 
 const app = document.getElementById('app');
 let fbApp, auth, db;
@@ -200,8 +201,7 @@ function header(){
 
 window.setView = async function(v){
   view = v;
-  if(view === 'admin'){ window._adminSession = false; }
-  if(currentUser && view === 'client'){ await signOut(auth); }
+  if(currentUser){ await signOut(auth); } // cambiar de vista siempre arranca sesión limpia
   draw();
 }
 
@@ -212,7 +212,7 @@ async function draw(){
 
 // ---------------- CLIENT ----------------
 async function drawClient(){
-  if(currentUser && !currentUser.email.startsWith('admin_')){
+  if(currentUser && currentUser.email !== ADMIN_EMAIL){
     return drawClientDashboard();
   }
   render(header() + `
@@ -386,10 +386,13 @@ window.redeemCode = async function(){
 }
 
 // ---------------- ADMIN ----------------
-// El panel de admin usa una contraseña simple guardada en Firestore (config/settings),
-// separada del login de clientes. Pensado para uso interno tuyo, no para clientes.
+// El panel de admin ahora inicia sesión con una cuenta real de Firebase Auth
+// (admin@trix3d.local). Creála vos en Firebase Console > Authentication > Users
+// > Add user, con el email de arriba y la contraseña que quieras. Sin esto,
+// Firestore rechaza cualquier escritura del panel (generar código, guardar
+// configuración) porque las reglas exigen una sesión autenticada.
 async function drawAdmin(){
-  if(window._adminSession){
+  if(currentUser && currentUser.email === ADMIN_EMAIL){
     return drawAdminPanel();
   }
   render(header() + `
@@ -404,14 +407,14 @@ async function drawAdmin(){
 }
 
 window.adminLogin = async function(){
-  const cfg = await getConfig();
   const pass = document.getElementById('ap').value;
-  if(pass !== cfg.adminPass){
-    document.getElementById('amsg').innerHTML = '<div class="msg err">Contraseña incorrecta.</div>';
-    return;
+  const msg = document.getElementById('amsg');
+  if(!pass){ msg.innerHTML = '<div class="msg err">Ingresá la contraseña.</div>'; return; }
+  try{
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pass);
+  }catch(e){
+    msg.innerHTML = '<div class="msg err">Contraseña incorrecta, o todavía no creaste el usuario admin@trix3d.local en Firebase Authentication.</div>';
   }
-  window._adminSession = true;
-  draw();
 }
 
 async function drawAdminPanel(){
@@ -459,44 +462,61 @@ async function drawAdminPanel(){
   loadClientList();
 }
 
-window.adminLogout = function(){ window._adminSession = false; draw(); }
+window.adminLogout = async function(){ await signOut(auth); }
 
 window.generateCode = async function(){
   const amount = parseFloat(document.getElementById('amount').value);
   const result = document.getElementById('genResult');
   if(!amount || amount <= 0){ result.innerHTML = '<div class="msg err">Ingresá un monto válido.</div>'; return; }
-  const cfg = await getConfig();
-  const points = Math.round((amount / 100) * cfg.pointsPer100);
-  let code = genCode();
-  while((await getDoc(doc(db,"codes",code))).exists()) code = genCode();
-  await setDoc(doc(db, "codes", code), {
-    points, used:false, createdAt: new Date().toISOString(), amount
-  });
-  result.innerHTML = `<div class="code-display">${code}</div><div class="hint" style="text-align:center">Vale ${points} puntos. Compartíselo al cliente.</div>`;
+  try{
+    const cfg = await getConfig();
+    const points = Math.round((amount / 100) * cfg.pointsPer100);
+    let code = genCode();
+    while((await getDoc(doc(db,"codes",code))).exists()) code = genCode();
+    await setDoc(doc(db, "codes", code), {
+      points, used:false, createdAt: new Date().toISOString(), amount
+    });
+    result.innerHTML = `<div class="code-display">${code}</div><div class="hint" style="text-align:center">Vale ${points} puntos. Compartíselo al cliente.</div>`;
+  }catch(e){
+    result.innerHTML = `<div class="msg err">No se pudo generar el código: ${e.message || e}</div>`;
+  }
 }
 
 window.saveRate = async function(){
-  const cfg = await getConfig();
-  cfg.pointsPer100 = parseFloat(document.getElementById('rate').value) || cfg.pointsPer100;
-  await saveConfig(cfg);
-  document.getElementById('cfgmsg').innerHTML = '<div class="msg ok">Tasa actualizada.</div>';
+  const msg = document.getElementById('cfgmsg');
+  try{
+    const cfg = await getConfig();
+    cfg.pointsPer100 = parseFloat(document.getElementById('rate').value) || cfg.pointsPer100;
+    await saveConfig(cfg);
+    msg.innerHTML = '<div class="msg ok">Tasa actualizada.</div>';
+  }catch(e){
+    msg.innerHTML = `<div class="msg err">No se pudo guardar: ${e.message || e}</div>`;
+  }
 }
 
 window.addTier = async function(){
   const label = document.getElementById('tierLabel').value.trim();
   const points = parseInt(document.getElementById('tierPoints').value);
   if(!label || !points){ return; }
-  const cfg = await getConfig();
-  cfg.tiers.push({label, points});
-  await saveConfig(cfg);
-  drawAdminPanel();
+  try{
+    const cfg = await getConfig();
+    cfg.tiers.push({label, points});
+    await saveConfig(cfg);
+    drawAdminPanel();
+  }catch(e){
+    document.getElementById('cfgmsg').innerHTML = `<div class="msg err">No se pudo agregar: ${e.message || e}</div>`;
+  }
 }
 
 window.removeTier = async function(i){
-  const cfg = await getConfig();
-  cfg.tiers.splice(i,1);
-  await saveConfig(cfg);
-  drawAdminPanel();
+  try{
+    const cfg = await getConfig();
+    cfg.tiers.splice(i,1);
+    await saveConfig(cfg);
+    drawAdminPanel();
+  }catch(e){
+    document.getElementById('cfgmsg').innerHTML = `<div class="msg err">No se pudo quitar: ${e.message || e}</div>`;
+  }
 }
 
 async function loadClientList(){
