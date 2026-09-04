@@ -3,10 +3,8 @@
 // Firebase calls (auth/data) always go to the network — only static
 // files are served from cache.
 
-const CACHE_NAME = 'trix3d-puntos-v1';
+const CACHE_NAME = 'trix3d-puntos-v2';
 const APP_SHELL = [
-  './',
-  './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -51,17 +49,35 @@ self.addEventListener('fetch', (event) => {
   if (
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('firebaseio.com') ||
-    url.hostname.includes('gstatic.com') && url.pathname.includes('firebasejs') === false
+    (url.hostname.includes('gstatic.com') && !url.pathname.includes('firebasejs'))
   ) {
     return;
   }
 
+  // HTML / navigation requests: always try the network first, so a new
+  // deploy is picked up immediately. Only fall back to cache if offline.
+  const isHTML = event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html');
+
+  if (isHTML) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Everything else (icons, manifest): cache-first, since those rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request)
         .then((response) => {
-          // Cache successful same-origin GETs for next time offline
           if (event.request.method === 'GET' && response.ok && url.origin === self.location.origin) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
