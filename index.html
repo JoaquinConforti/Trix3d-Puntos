@@ -84,13 +84,12 @@ import {
 //    proyecto > tus apps > SDK setup and configuration > Config)
 // ======================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyBay0N90XvGlzNM_LX6-l0SLHLGH0sET0M",
-  authDomain: "trix3d-puntos.firebaseapp.com",
-  projectId: "trix3d-puntos",
-  storageBucket: "trix3d-puntos.firebasestorage.app",
-  messagingSenderId: "87360778872",
-  appId: "1:87360778872:web:da722c4a269cd5a71b738d",
-  measurementId: "G-2MY789F65M"
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROYECTO",
+  storageBucket: "TU_PROYECTO.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
 };
 
 const EMAIL_DOMAIN = "trix3d.local"; // los usuarios eligen un "usuario", se guarda como usuario@trix3d.local
@@ -291,6 +290,9 @@ async function drawClientDashboard(){
         </svg>
         ${nextTier ? `<div class="hint" style="text-align:center">Te faltan <strong>${nextTier.points - u.points}</strong> puntos para ${nextTier.label}</div>` : `<div class="hint" style="text-align:center">¡Tenés todos los beneficios desbloqueados!</div>`}
       </div>
+      ${('Notification' in window && Notification.permission === 'default') ? `
+        <button class="link" onclick="window.enableNotifs()">Activar avisos cuando sume puntos</button>
+      ` : ''}
     </div>
 
     <div class="card">
@@ -318,6 +320,38 @@ async function drawClientDashboard(){
 
 window.clientLogout = async function(){ await signOut(auth); }
 
+// ---- Notificaciones locales (sin servidor) ----
+// Se disparan mientras la pestaña/app está abierta (aunque en segundo plano).
+// No llegan con la app totalmente cerrada — para eso hace falta push real (FCM + Cloud Functions).
+function askNotificationPermission(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'default'){
+    Notification.requestPermission();
+  }
+}
+
+window.enableNotifs = async function(){
+  await askNotificationPermission();
+  drawClientDashboard();
+}
+
+async function fireNotification(title, body){
+  if(!('Notification' in window)) return;
+  if(Notification.permission !== 'granted') return;
+  try{
+    if('serviceWorker' in navigator){
+      const reg = await navigator.serviceWorker.ready;
+      reg.showNotification(title, {
+        body,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-192.png'
+      });
+    } else {
+      new Notification(title, { body, icon: 'icons/icon-192.png' });
+    }
+  }catch(e){ console.log('No se pudo mostrar la notificación', e); }
+}
+
 window.redeemCode = async function(){
   const codeInput = document.getElementById('redeemCode').value.trim().toUpperCase();
   const msg = document.getElementById('rmsg');
@@ -330,12 +364,23 @@ window.redeemCode = async function(){
   const uref = doc(db, "users", currentUser.uid);
   const usnap = await getDoc(uref);
   const u = usnap.data();
+  const newPoints = u.points + codeData.points;
   await updateDoc(uref, {
-    points: u.points + codeData.points,
+    points: newPoints,
     redeemedCodes: arrayUnion(codeInput)
   });
   await updateDoc(codeRef, { used: true, redeemedBy: u.username });
   msg.innerHTML = `<div class="msg ok">¡Sumaste ${codeData.points} puntos!</div>`;
+
+  // Notificación: puntos sumados, y si corresponde, nivel desbloqueado
+  const cfg = await getConfig();
+  const newlyUnlocked = cfg.tiers.filter(t => u.points < t.points && newPoints >= t.points);
+  if(newlyUnlocked.length > 0){
+    fireNotification('¡Nuevo beneficio desbloqueado! 🎉', `Llegaste a ${newlyUnlocked[0].label} con ${newPoints} puntos.`);
+  } else {
+    fireNotification('TRIX3D · Puntos sumados', `+${codeData.points} puntos. Ya tenés ${newPoints} en total.`);
+  }
+
   setTimeout(drawClientDashboard, 900);
 }
 
