@@ -323,6 +323,7 @@ async function drawClientDashboard(){
 }
 
 window.clientLogout = async function(){ await signOut(auth); }
+window.backToDashboard = function(){ drawClientDashboard(); }
 
 window.claimTier = async function(pointsCost, label){
   const resultEl = document.getElementById('claimResult');
@@ -346,7 +347,7 @@ window.claimTier = async function(pointsCost, label){
     resultEl.innerHTML = `
       <div class="code-display">${code}</div>
       <div class="hint" style="text-align:center">Mostrale este código a TRIX3D para validar tu ${label}. Válido una sola vez.</div>
-      <button class="action" onclick="drawClientDashboard()" style="margin-top:10px">Listo, volver</button>`;
+      <button class="action" onclick="window.backToDashboard()" style="margin-top:10px">Listo, volver</button>`;
     fireNotification('TRIX3D · Canje listo', `Mostrá el código ${code} para tu ${label}.`);
   }catch(e){
     resultEl.innerHTML = `<div class="msg err">No se pudo canjear: ${e.message || e}</div>`;
